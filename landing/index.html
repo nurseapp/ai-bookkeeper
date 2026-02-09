@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Bookkeeper - Receipt Scanning via WhatsApp</title>
+  <meta name="description" content="Snap a photo of your receipt on WhatsApp. AI extracts, categorizes, and tracks your expenses automatically. No app needed.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #25D366;
+      --green-dark: #128C7E;
+      --dark: #0a0a0a;
+      --gray-900: #111111;
+      --gray-800: #1a1a1a;
+      --gray-700: #2a2a2a;
+      --gray-400: #999;
+      --gray-300: #bbb;
+      --white: #f5f5f5;
+      --accent: #25D366;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--dark);
+      color: var(--white);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+    /* Nav */
+    nav {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--gray-700);
+    }
+    nav .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--green);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .nav-cta {
+      background: var(--green);
+      color: #000;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: opacity 0.2s;
+    }
+    .nav-cta:hover { opacity: 0.85; }
+
+    /* Hero */
+    .hero {
+      padding: 100px 0 80px;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: var(--gray-800);
+      border: 1px solid var(--gray-700);
+      padding: 6px 16px;
+      border-radius: 100px;
+      font-size: 0.85rem;
+      color: var(--gray-300);
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 24px;
+      letter-spacing: -0.02em;
+    }
+    .hero h1 .highlight {
+      background: linear-gradient(135deg, var(--green), #6dd5a0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 1.2rem;
+      color: var(--gray-400);
+      max-width: 600px;
+      margin: 0 auto 40px;
+    }
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      background: var(--green);
+      color: #000;
+      padding: 16px 36px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 1.05rem;
+      transition: transform 0.2s, opacity 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary:hover { transform: translateY(-2px); opacity: 0.9; }
+    .btn-secondary {
+      background: var(--gray-800);
+      border: 1px solid var(--gray-700);
+      color: var(--white);
+      padding: 16px 36px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 1.05rem;
+      transition: border-color 0.2s;
+    }
+    .btn-secondary:hover { border-color: var(--gray-400); }
+
+    /* Demo */
+    .demo {
+      padding: 40px 0 80px;
+      text-align: center;
+    }
+    .demo-mockup {
+      background: var(--gray-800);
+      border: 1px solid var(--gray-700);
+      border-radius: 24px;
+      padding: 40px;
+      max-width: 700px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    .chat-bubble {
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .chat-user {
+      background: var(--green-dark);
+      margin-left: auto;
+      border-bottom-right-radius: 4px;
+      text-align: right;
+    }
+    .chat-bot {
+      background: var(--gray-700);
+      border-bottom-left-radius: 4px;
+    }
+    .chat-img {
+      background: var(--gray-700);
+      border-bottom-left-radius: 4px;
+      max-width: 60%;
+      margin-left: auto;
+      text-align: center;
+      color: var(--gray-400);
+      padding: 30px 16px;
+      font-style: italic;
+    }
+
+    /* How it works */
+    .how {
+      padding: 80px 0;
+      border-top: 1px solid var(--gray-700);
+    }
+    .section-label {
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--green);
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 48px;
+    }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 32px;
+    }
+    .step {
+      background: var(--gray-800);
+      border: 1px solid var(--gray-700);
+      border-radius: 16px;
+      padding: 32px 24px;
+    }
+    .step-num {
+      width: 40px;
+      height: 40px;
+      background: var(--green);
+      color: #000;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+    }
+    .step h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .step p {
+      color: var(--gray-400);
+      font-size: 0.9rem;
+    }
+
+    /* Features */
+    .features {
+      padding: 80px 0;
+      border-top: 1px solid var(--gray-700);
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    .feature {
+      background: var(--gray-800);
+      border: 1px solid var(--gray-700);
+      border-radius: 16px;
+      padding: 28px 24px;
+    }
+    .feature-icon {
+      font-size: 1.8rem;
+      margin-bottom: 12px;
+    }
+    .feature h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .feature p {
+      color: var(--gray-400);
+      font-size: 0.9rem;
+    }
+
+    /* Pricing */
+    .pricing {
+      padding: 80px 0;
+      border-top: 1px solid var(--gray-700);
+    }
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+    .price-card {
+      background: var(--gray-800);
+      border: 1px solid var(--gray-700);
+      border-radius: 20px;
+      padding: 36px 28px;
+      position: relative;
+    }
+    .price-card.featured {
+      border-color: var(--green);
+      box-shadow: 0 0 40px rgba(37, 211, 102, 0.1);
+    }
+    .price-badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--green);
+      color: #000;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 16px;
+      border-radius: 100px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .price-card h3 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .price-card .price {
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .price-card .price span {
+      font-size: 1rem;
+      font-weight: 400;
+      color: var(--gray-400);
+    }
+    .price-card .price-desc {
+      color: var(--gray-400);
+      font-size: 0.85rem;
+      margin-bottom: 24px;
+    }
+    .price-card ul {
+      list-style: none;
+      margin-bottom: 28px;
+    }
+    .price-card li {
+      padding: 8px 0;
+      font-size: 0.9rem;
+      color: var(--gray-300);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .price-card li::before {
+      content: "\2713";
+      color: var(--green);
+      font-weight: 700;
+    }
+    .price-card .btn-primary {
+      width: 100%;
+      justify-content: center;
+      text-align: center;
+    }
+    .price-card .btn-secondary {
+      width: 100%;
+      text-align: center;
+      display: block;
+    }
+
+    /* FAQ */
+    .faq {
+      padding: 80px 0;
+      border-top: 1px solid var(--gray-700);
+    }
+    .faq-list {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .faq-item {
+      border-bottom: 1px solid var(--gray-700);
+      padding: 20px 0;
+    }
+    .faq-q {
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .faq-q::after {
+      content: "+";
+      font-size: 1.3rem;
+      color: var(--gray-400);
+      transition: transform 0.2s;
+    }
+    .faq-item.open .faq-q::after {
+      transform: rotate(45deg);
+    }
+    .faq-a {
+      color: var(--gray-400);
+      font-size: 0.9rem;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s, padding 0.3s;
+    }
+    .faq-item.open .faq-a {
+      max-height: 200px;
+      padding-top: 12px;
+    }
+
+    /* CTA */
+    .final-cta {
+      padding: 80px 0;
+      text-align: center;
+      border-top: 1px solid var(--gray-700);
+    }
+    .final-cta h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    .final-cta p {
+      color: var(--gray-400);
+      margin-bottom: 32px;
+      font-size: 1.1rem;
+    }
+
+    /* Footer */
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--gray-700);
+      text-align: center;
+      color: var(--gray-400);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 640px) {
+      .hero { padding: 60px 0 40px; }
+      .demo-mockup { padding: 24px; }
+      .pricing-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav>
+    <div class="container">
+      <div class="logo">
+        <div class="logo-icon">&#128203;</div>
+        AI Bookkeeper
+      </div>
+      <a href="#pricing" class="nav-cta">Get Started</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">&#9889; Powered by AI &middot; Works on WhatsApp</div>
+      <h1>
+        Snap a receipt.<br>
+        <span class="highlight">Expenses tracked.</span>
+      </h1>
+      <p>
+        Send a photo of any receipt on WhatsApp. AI extracts the details, categorizes it, and tracks your spending. No app to download.
+      </p>
+      <div class="hero-buttons">
+        <a href="#pricing" class="btn-primary">Start Tracking &rarr;</a>
+        <a href="#how" class="btn-secondary">See How It Works</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Chat Demo -->
+  <section class="demo">
+    <div class="container">
+      <div class="demo-mockup">
+        <div class="chat-bubble chat-img">&#128247; [Receipt photo sent]</div>
+        <div class="chat-bubble chat-bot">Processing your receipt... Please wait a moment.</div>
+        <div class="chat-bubble chat-bot">
+          <strong>Receipt Recorded!</strong><br><br>
+          Merchant: Starbucks<br>
+          Date: Feb 8, 2026<br>
+          Category: Food &amp; Dining<br>
+          Total: $12.45<br><br>
+          Items:<br>
+          - Latte x2: $9.90<br>
+          - Muffin: $2.55<br><br>
+          Confidence: 95%
+        </div>
+        <div class="chat-bubble chat-user">budget</div>
+        <div class="chat-bubble chat-bot">
+          <strong>Budget Status</strong><br><br>
+          Food &amp; Dining<br>
+          [######----] 62%<br>
+          $310.00 / $500.00
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="how" id="how">
+    <div class="container">
+      <div class="section-label">How it works</div>
+      <h2 class="section-title">Three steps. That's it.</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Snap &amp; Send</h3>
+          <p>Take a photo of your receipt and send it to our WhatsApp number. Any receipt, any store.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>AI Extracts</h3>
+          <p>Our AI reads the receipt, pulls out merchant, items, totals, tax, and tip. Categorizes automatically.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Track &amp; Budget</h3>
+          <p>Get instant confirmation. Check your spending, budgets, and summaries anytime with simple text commands.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features">
+    <div class="container">
+      <div class="section-label">Features</div>
+      <h2 class="section-title">Everything you need. Nothing you don't.</h2>
+      <div class="feature-grid">
+        <div class="feature">
+          <div class="feature-icon">&#128248;</div>
+          <h3>AI Receipt Scanning</h3>
+          <p>State-of-the-art vision AI extracts merchant, items, totals, tax, tip, and payment method from any receipt.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">&#128202;</div>
+          <h3>Auto-Categorization</h3>
+          <p>Expenses are automatically sorted into 15 categories like Food, Transport, Healthcare, Shopping, and more.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">&#128176;</div>
+          <h3>Budget Tracking</h3>
+          <p>Set monthly budgets per category. Get visual progress bars showing exactly where you stand.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">&#128172;</div>
+          <h3>WhatsApp Native</h3>
+          <p>No app to install. No login to remember. Just WhatsApp &mdash; the app you already use every day.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">&#128221;</div>
+          <h3>Spending Reports</h3>
+          <p>Text "summary" for monthly breakdowns by category. "last 5" to see recent transactions. "total" for quick totals.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">&#128274;</div>
+          <h3>Your Data, Your Sheet</h3>
+          <p>All data stored in a Google Sheet you own. Export anytime. Full transparency, no lock-in.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section class="pricing" id="pricing">
+    <div class="container">
+      <div class="section-label">Pricing</div>
+      <h2 class="section-title" style="text-align:center;">Simple, transparent pricing.</h2>
+      <div class="pricing-grid">
+        <div class="price-card">
+          <h3>Starter</h3>
+          <div class="price">$9<span>/mo</span></div>
+          <div class="price-desc">Everything you need to get started</div>
+          <ul>
+            <li>50 receipt scans/month</li>
+            <li>AI extraction &amp; categorization</li>
+            <li>Budget tracking</li>
+            <li>All text commands</li>
+            <li>Google Sheets export</li>
+          </ul>
+          <!-- REPLACE with your Stripe payment link -->
+          <a href="#STRIPE_STARTER_LINK" class="btn-secondary" id="starter-btn">Get Started</a>
+        </div>
+        <div class="price-card featured">
+          <div class="price-badge">Most Popular</div>
+          <h3>Pro</h3>
+          <div class="price">$19<span>/mo</span></div>
+          <div class="price-desc">For power users and small businesses</div>
+          <ul>
+            <li>Unlimited receipt scans</li>
+            <li>Everything in Starter</li>
+            <li>Custom categories</li>
+            <li>Priority support</li>
+            <li>Multi-currency support</li>
+          </ul>
+          <!-- REPLACE with your Stripe payment link -->
+          <a href="#STRIPE_PRO_LINK" class="btn-primary" id="pro-btn">Get Started &rarr;</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq" id="faq">
+    <div class="container">
+      <div class="section-label">FAQ</div>
+      <h2 class="section-title">Common questions</h2>
+      <div class="faq-list">
+        <div class="faq-item">
+          <div class="faq-q">How does it work?</div>
+          <div class="faq-a">Send a photo of your receipt to our WhatsApp number. Our AI reads the receipt, extracts all details, categorizes the expense, and saves it to your personal Google Sheet. You get a confirmation message instantly.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Do I need to install an app?</div>
+          <div class="faq-a">No. It works entirely through WhatsApp, which you already have. Just save our number and start sending receipts.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">What types of receipts does it support?</div>
+          <div class="faq-a">Any printed or digital receipt. Restaurant bills, grocery receipts, gas stations, online order confirmations &mdash; if you can photograph it, we can read it. Works with multiple currencies too.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Where is my data stored?</div>
+          <div class="faq-a">All your expense data is stored in a Google Sheet that you have full access to. You can view, edit, export, or download it anytime. We never sell your data.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Can I cancel anytime?</div>
+          <div class="faq-a">Yes, cancel anytime from your Stripe billing portal. No contracts, no cancellation fees.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">What commands can I use?</div>
+          <div class="faq-a">Text "help" for all commands. Includes: summary, budget, total, last 5 (recent transactions), delete last, and categories. All via simple WhatsApp messages.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="final-cta">
+    <div class="container">
+      <h2>Start tracking expenses in 30 seconds.</h2>
+      <p>No app. No signup form. Just WhatsApp.</p>
+      <a href="#pricing" class="btn-primary">Get Started &rarr;</a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>&copy; 2026 AI Bookkeeper. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    // FAQ toggle
+    document.querySelectorAll('.faq-q').forEach(q => {
+      q.addEventListener('click', () => {
+        q.parentElement.classList.toggle('open');
+      });
+    });
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        const target = document.querySelector(a.getAttribute('href'));
+        if (target) {
+          e.preventDefault();
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
