@@ -1,0 +1,47 @@
+{
+  "spreadsheet": {
+    "title": "AI Bookkeeper",
+    "sheets": [
+      {
+        "name": "Transactions",
+        "headers": [
+          "ID", "Timestamp", "Phone Number", "Merchant", "Receipt Date",
+          "Category", "Currency", "Subtotal", "Tax", "Tip", "Total",
+          "Payment Method", "Line Items", "Confidence", "Notes", "Month"
+        ],
+        "notes": "Column P (Month) uses formula: =TEXT(INDIRECT(\"E\"&ROW()),\"YYYY-MM\")"
+      },
+      {
+        "name": "Monthly Summary",
+        "headers": ["Month", "Total Spent", "Transaction Count", "Average", "Food & Dining", "Groceries", "Transportation", "Utilities", "Entertainment", "Healthcare", "Shopping", "Business", "Travel", "Education", "Personal Care", "Home & Garden", "Gifts & Donations", "Subscriptions", "Other"],
+        "notes": "Populate with SUMIFS formulas referencing the Transactions sheet"
+      },
+      {
+        "name": "Categories",
+        "headers": ["Category", "Monthly Budget", "Description", "Keywords"],
+        "notes": "Import from categories-data.csv"
+      },
+      {
+        "name": "Dashboard",
+        "notes": "Auto-populated with overview formulas. See SETUP.md for formula details.",
+        "formulas": {
+          "A1": "AI Bookkeeper Dashboard",
+          "A3": "Current Month Overview",
+          "A4": "Total Spent",
+          "B4": "=SUMIFS(Transactions!K:K,Transactions!P:P,TEXT(TODAY(),\"YYYY-MM\"))",
+          "A5": "Transaction Count",
+          "B5": "=COUNTIFS(Transactions!P:P,TEXT(TODAY(),\"YYYY-MM\"))",
+          "A6": "Daily Average",
+          "B6": "=IFERROR(B4/DAY(TODAY()),0)",
+          "A8": "Last Updated",
+          "B8": "=NOW()"
+        }
+      },
+      {
+        "name": "ConversationState",
+        "headers": ["phoneNumber", "pendingAction", "pendingTransactionJson", "lastInteraction"],
+        "notes": "Used by n8n workflow for multi-step conversations (delete confirmations, duplicate handling). Rows auto-expire after 5 minutes."
+      }
+    ]
+  }
+}

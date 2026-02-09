@@ -1,0 +1,8 @@
+# Utility scripts with hardcoded API keys
+*.js
+api-response*.json
+current-workflow.json
+workflow-check.json
+node_modules/
+dist/
+.env

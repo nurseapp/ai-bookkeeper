@@ -1,0 +1,1366 @@
+{
+  "name": "AI Bookkeeper - WhatsApp Receipt Scanner",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "twilio-whatsapp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "f88bd760-6fa9-4e85-aa61-9a4867dd359e",
+      "name": "Twilio Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "twilio-whatsapp"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "<Response/>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/xml"
+              }
+            ]
+          }
+        }
+      },
+      "id": "adc52c40-3c1e-4875-864a-68b67b51b2e0",
+      "name": "Respond TwiML",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse incoming Twilio WhatsApp webhook\nconst body = $input.first().json.body || $input.first().json;\n\nconst phoneNumber = body.From || '';\nconst numMedia = parseInt(body.NumMedia || '0', 10);\nconst messageText = (body.Body || '').trim();\nconst mediaUrl = body.MediaUrl0 || '';\nconst mediaContentType = body.MediaContentType0 || '';\nconst profileName = body.ProfileName || '';\n\nlet routeType = 'unknown';\n\nif (numMedia > 0 && mediaUrl && mediaContentType.startsWith('image/')) {\n  routeType = 'image';\n} else if (messageText) {\n  routeType = 'text_command';\n}\n\nreturn [{\n  json: {\n    phoneNumber,\n    numMedia,\n    messageText,\n    mediaUrl,\n    mediaContentType,\n    profileName,\n    routeType,\n    normalizedPhone: phoneNumber.replace('whatsapp:', ''),\n  }\n}];"
+      },
+      "id": "6d954829-04ca-4d58-af5d-8947c0503af5",
+      "name": "Parse Incoming Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "ConversationState"
+        },
+        "options": {}
+      },
+      "id": "ce6c56b7-06a7-49c8-b937-b961cf7430b6",
+      "name": "Read Conversation State",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Evaluate conversation state and determine route\nconst incoming = $('Parse Incoming Message').first().json;\nconst stateRows = $input.all().map(item => item.json);\n\nlet routeType = incoming.routeType;\nlet pendingState = null;\n\nconst now = Date.now();\nconst STATE_TTL_MS = 5 * 60 * 1000; // 5 minutes\n\nfor (const row of stateRows) {\n  if (row.phoneNumber === incoming.phoneNumber && row.pendingAction) {\n    const lastInteraction = new Date(row.lastInteraction).getTime();\n    if (now - lastInteraction <= STATE_TTL_MS) {\n      pendingState = row;\n      routeType = 'confirmation';\n      break;\n    }\n  }\n}\n\nreturn [{\n  json: {\n    ...incoming,\n    routeType,\n    pendingState,\n  }\n}];"
+      },
+      "id": "f33f175b-1b58-4c59-a5ca-03d1c009777e",
+      "name": "Evaluate Route",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.routeType }}",
+                    "rightValue": "image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "image"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.routeType }}",
+                    "rightValue": "confirmation",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "confirmation"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.routeType }}",
+                    "rightValue": "text_command",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text_command"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "52316aff-1e96-4173-baf5-eac26ed120ea",
+      "name": "Route Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "from": "={{ $env.TWILIO_WHATSAPP_NUMBER }}",
+        "to": "={{ $('Parse Incoming Message').first().json.phoneNumber }}",
+        "toWhatsapp": true,
+        "body": "Processing your receipt... Please wait a moment."
+      },
+      "id": "2d2ff985-41fb-41e1-9dc2-d48b0546ea71",
+      "name": "Send Processing Ack",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Parse Incoming Message').first().json.mediaUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "0a153711-6609-4e8b-bfb6-6a940e5a4f67",
+      "name": "Download Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convert downloaded binary image to base64\nconst binaryData = $input.first().binary;\nconst binaryKey = Object.keys(binaryData)[0];\nconst buffer = await this.helpers.getBinaryDataBuffer(0, binaryKey);\nconst base64 = buffer.toString('base64');\nconst mediaType = $('Parse Incoming Message').first().json.mediaContentType || 'image/jpeg';\n\nreturn [{\n  json: {\n    base64,\n    mediaType,\n    phoneNumber: $('Parse Incoming Message').first().json.phoneNumber,\n    normalizedPhone: $('Parse Incoming Message').first().json.normalizedPhone,\n  }\n}];"
+      },
+      "id": "98ce7686-10ef-42b0-b2ae-0876ecf2ce5b",
+      "name": "Convert to Base64",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-20250514\",\n  \"max_tokens\": 512,\n  \"messages\": [{\n    \"role\": \"user\",\n    \"content\": [\n      {\n        \"type\": \"image\",\n        \"source\": {\n          \"type\": \"base64\",\n          \"media_type\": \"{{ $json.mediaType }}\",\n          \"data\": \"{{ $json.base64 }}\"\n        }\n      },\n      {\n        \"type\": \"text\",\n        \"text\": \"Analyze this image and determine if it is a readable receipt.\\n\\nRespond with ONLY valid JSON:\\n{\\\"isReceipt\\\": true/false, \\\"isReadable\\\": true/false, \\\"issues\\\": [\\\"list of problems if not readable\\\"]}\\n\\nCheck for: blurry text, cut off receipt, too dark/overexposed, crumpled, not a receipt, overlapping receipts.\\nOnly mark isReadable as false if truly unreadable. Minor imperfections are OK.\"\n      }\n    ]\n  }]\n}",
+        "options": {}
+      },
+      "id": "bd9623d6-7799-4bfa-b7b7-a909b621e0bf",
+      "name": "Claude Validate Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Claude image validation response\nconst response = $input.first().json;\nconst text = (response.content && response.content[0] && response.content[0].text) || '';\n\nlet validation;\ntry {\n  const jsonMatch = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/) || [null, text];\n  const jsonStr = (jsonMatch[1] || text).trim();\n  validation = JSON.parse(jsonStr);\n} catch (e) {\n  validation = { isReceipt: false, isReadable: false, issues: ['Failed to validate image'] };\n}\n\nconst phoneNumber = $('Parse Incoming Message').first().json.phoneNumber;\n\nlet errorMessage = null;\nif (!validation.isReceipt) {\n  errorMessage = \"That doesn't appear to be a receipt. Please send a clear photo of your receipt.\";\n} else if (!validation.isReadable) {\n  const issues = (validation.issues || []).map(i => '- ' + i).join('\\n');\n  errorMessage = 'I could not read that receipt clearly.\\n\\nIssues:\\n' + issues + '\\n\\nPlease take a clearer photo and try again.';\n}\n\nreturn [{\n  json: {\n    isValid: !!(validation.isReceipt && validation.isReadable),\n    errorMessage,\n    phoneNumber,\n    base64: $('Convert to Base64').first().json.base64,\n    mediaType: $('Convert to Base64').first().json.mediaType,\n    normalizedPhone: $('Parse Incoming Message').first().json.normalizedPhone,\n  }\n}];"
+      },
+      "id": "983b1457-633d-4d3c-a65d-fff0c3d57411",
+      "name": "Parse Validation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.isValid }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "fbd5e8a9-f2ea-438b-9871-1b477a238817",
+      "name": "Is Valid Receipt?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "from": "={{ $env.TWILIO_WHATSAPP_NUMBER }}",
+        "to": "={{ $json.phoneNumber }}",
+        "toWhatsapp": true,
+        "body": "={{ $json.errorMessage }}"
+      },
+      "id": "cbd4be3f-eb9f-462d-8fea-56c2b43eb5c3",
+      "name": "Send Validation Error",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        2660,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-20250514\",\n  \"max_tokens\": 2048,\n  \"messages\": [{\n    \"role\": \"user\",\n    \"content\": [\n      {\n        \"type\": \"image\",\n        \"source\": {\n          \"type\": \"base64\",\n          \"media_type\": \"{{ $json.mediaType }}\",\n          \"data\": \"{{ $json.base64 }}\"\n        }\n      },\n      {\n        \"type\": \"text\",\n        \"text\": \"You are an expert receipt OCR system. Analyze this receipt image and extract all information into structured JSON.\\n\\nExtract: merchant, merchantAddress, date (YYYY-MM-DD), time (HH:MM), currency (ISO 4217), subtotal, taxAmount, taxRate, tipAmount, totalAmount, paymentMethod, lastFourDigits, lineItems (array of {description, quantity, unitPrice, totalPrice}), category.\\n\\nCategories (pick exactly ONE): Food & Dining, Groceries, Transportation, Utilities, Entertainment, Healthcare, Shopping, Business, Travel, Education, Personal Care, Home & Garden, Gifts & Donations, Subscriptions, Other.\\n\\nProvide confidence scores (0.0-1.0) for: overall, merchant, date, total, lineItems, currency.\\n\\nRules: null for missing fields, plain numbers (no $ symbols), default MM/DD/YY for US merchants, extract only the primary receipt if multiple shown.\\n\\nRespond with ONLY valid JSON:\\n{\\\"merchant\\\": \\\"string or null\\\", \\\"merchantAddress\\\": \\\"string or null\\\", \\\"date\\\": \\\"YYYY-MM-DD or null\\\", \\\"time\\\": \\\"HH:MM or null\\\", \\\"currency\\\": \\\"string\\\", \\\"subtotal\\\": \\\"number or null\\\", \\\"taxAmount\\\": \\\"number or null\\\", \\\"taxRate\\\": \\\"number or null\\\", \\\"tipAmount\\\": \\\"number or null\\\", \\\"totalAmount\\\": \\\"number\\\", \\\"paymentMethod\\\": \\\"string or null\\\", \\\"lastFourDigits\\\": \\\"string or null\\\", \\\"lineItems\\\": [{\\\"description\\\": \\\"string\\\", \\\"quantity\\\": \\\"number\\\", \\\"unitPrice\\\": \\\"number\\\", \\\"totalPrice\\\": \\\"number\\\"}], \\\"category\\\": \\\"string\\\", \\\"confidence\\\": {\\\"overall\\\": \\\"number\\\", \\\"merchant\\\": \\\"number\\\", \\\"date\\\": \\\"number\\\", \\\"total\\\": \\\"number\\\", \\\"lineItems\\\": \\\"number\\\", \\\"currency\\\": \\\"number\\\"}}\"\n      }\n    ]\n  }]\n}",
+        "options": {}
+      },
+      "id": "4150a798-90e1-46b0-9670-acd604a7527a",
+      "name": "Claude Extract Receipt",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2660,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process extraction: parse, normalize, categorize, build transaction\nconst response = $input.first().json;\nconst text = (response.content && response.content[0] && response.content[0].text) || '';\n\nlet extraction;\ntry {\n  const jsonMatch = text.match(/```(?:json)?\\s*([\\s\\S]*?)```/) || [null, text];\n  const jsonStr = (jsonMatch[1] || text).trim();\n  extraction = JSON.parse(jsonStr);\n} catch (e) {\n  throw new Error('Failed to parse receipt data: ' + e.message);\n}\n\nif (extraction.totalAmount == null) {\n  throw new Error('Failed to extract total amount from receipt');\n}\n\n// Normalize\nconst VALID_CURRENCIES = ['USD','EUR','GBP','CAD','AUD','JPY','CNY','INR','BRL','MXN','ZAR','KRW','CHF','SEK','NOK','DKK','NZD','SGD','HKD','TWD'];\n\nfunction normCurrency(code) {\n  const upper = (code || '').toUpperCase().trim();\n  return VALID_CURRENCIES.includes(upper) ? upper : 'USD';\n}\n\nfunction normDate(d) {\n  if (!d) return new Date().toISOString().split('T')[0];\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(d)) return d;\n  const parsed = new Date(d);\n  if (!isNaN(parsed.getTime())) return parsed.toISOString().split('T')[0];\n  return d;\n}\n\nextraction.merchant = extraction.merchant || 'Unknown Merchant';\nextraction.date = normDate(extraction.date);\nextraction.currency = normCurrency(extraction.currency);\nextraction.totalAmount = extraction.totalAmount || 0;\nextraction.lineItems = extraction.lineItems || [];\nextraction.confidence = extraction.confidence || { overall: 0.5, merchant: 0.5, date: 0.5, total: 0.5, lineItems: 0.5, currency: 0.5 };\n\n// Categorize\nconst CATEGORIES = [\n  { name: 'Food & Dining', kw: ['restaurant','cafe','coffee','pizza','burger','sushi','starbucks','mcdonalds','subway','chipotle','diner','bar','pub','grill','bistro','bakery'] },\n  { name: 'Groceries', kw: ['grocery','supermarket','walmart','costco','trader joe','whole foods','kroger','safeway','aldi','target','market','fresh','produce'] },\n  { name: 'Transportation', kw: ['gas','fuel','shell','bp','exxon','chevron','uber','lyft','parking','toll','transit','metro','bus'] },\n  { name: 'Utilities', kw: ['electric','water','gas bill','internet','comcast','att','verizon','tmobile','utility','power','energy'] },\n  { name: 'Entertainment', kw: ['cinema','movie','theater','concert','netflix','spotify','game','arcade','amusement','bowling','museum'] },\n  { name: 'Healthcare', kw: ['pharmacy','cvs','walgreens','doctor','dentist','hospital','clinic','medical','health','prescription'] },\n  { name: 'Shopping', kw: ['amazon','mall','clothing','shoes','electronics','best buy','nike','zara','h&m','retail'] },\n  { name: 'Business', kw: ['office','staples','fedex','ups','printing','copy','business','supplies','coworking'] },\n  { name: 'Travel', kw: ['hotel','airbnb','flight','airline','airport','car rental','hertz','marriott','hilton','booking'] },\n  { name: 'Education', kw: ['book','course','tuition','school','university','udemy','coursera','library','textbook'] },\n  { name: 'Personal Care', kw: ['salon','spa','barber','hair','nail','cosmetics','beauty','skincare','massage'] },\n  { name: 'Home & Garden', kw: ['home depot','lowes','ikea','furniture','hardware','garden','plant','home improvement'] },\n  { name: 'Gifts & Donations', kw: ['gift','charity','donation','present','flower','card'] },\n  { name: 'Subscriptions', kw: ['subscription','membership','gym','club','recurring','monthly'] },\n  { name: 'Other', kw: [] }\n];\n\nconst validCats = new Set(CATEGORIES.map(c => c.name));\nlet category = 'Other';\nif (extraction.category && validCats.has(extraction.category)) {\n  category = extraction.category;\n} else {\n  const searchText = [extraction.merchant, ...extraction.lineItems.map(i => i.description)].join(' ').toLowerCase();\n  for (const cat of CATEGORIES) {\n    if (cat.name === 'Other') continue;\n    if (cat.kw.some(k => searchText.includes(k))) { category = cat.name; break; }\n  }\n}\n\n// Build transaction\nconst lineItemsSummary = extraction.lineItems.map(item => {\n  const qty = item.quantity > 1 ? ' x' + item.quantity : '';\n  return item.description + qty + ' ($' + item.totalPrice.toFixed(2) + ')';\n}).join(', ');\n\nfunction genId() {\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {\n    const r = Math.random() * 16 | 0;\n    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);\n  });\n}\n\nconst phoneNumber = $('Parse Incoming Message').first().json.phoneNumber;\nconst normalizedPhone = $('Parse Incoming Message').first().json.normalizedPhone;\n\nconst transaction = {\n  id: genId(),\n  timestamp: new Date().toISOString(),\n  phoneNumber: normalizedPhone,\n  merchant: extraction.merchant,\n  date: extraction.date,\n  category,\n  currency: extraction.currency,\n  subtotal: extraction.subtotal ?? '',\n  taxAmount: extraction.taxAmount ?? '',\n  tipAmount: extraction.tipAmount ?? '',\n  totalAmount: extraction.totalAmount,\n  paymentMethod: extraction.paymentMethod || '',\n  lineItemsSummary,\n  confidenceScore: extraction.confidence.overall,\n  notes: '',\n  monthFormula: '=TEXT(INDIRECT(\"E\"&ROW()),\"YYYY-MM\")'\n};\n\nreturn [{\n  json: {\n    transaction,\n    extraction,\n    phoneNumber,\n    normalizedPhone,\n  }\n}];"
+      },
+      "id": "3f228643-fb6d-4329-a121-8e71ea815ee3",
+      "name": "Process Extraction",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Transactions"
+        },
+        "options": {}
+      },
+      "id": "a623b57f-5875-4e0c-8e06-90076b183b8c",
+      "name": "Read Transactions for Dupes",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3100,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check for duplicate transactions\nconst { transaction, extraction, phoneNumber } = $('Process Extraction').first().json;\nconst rows = $input.all().map(item => item.json);\n\nconst normalizedMerchant = transaction.merchant.toLowerCase().trim();\nconst targetAmount = transaction.totalAmount;\nconst targetDate = transaction.date;\n\nfunction isWithinDays(d1, d2, days) {\n  const a = new Date(d1 + 'T00:00:00');\n  const b = new Date(d2 + 'T00:00:00');\n  return Math.abs(a.getTime() - b.getTime()) <= days * 86400000;\n}\n\nlet isDuplicate = false;\nfor (const row of rows) {\n  const m = (row['Merchant'] || '').toLowerCase().trim();\n  const a = parseFloat(row['Total'] || '0');\n  const d = row['Receipt Date'] || '';\n  if (m === normalizedMerchant && Math.abs(a - targetAmount) < 0.02 && isWithinDays(d, targetDate, 1)) {\n    isDuplicate = true;\n    break;\n  }\n}\n\nreturn [{ json: { isDuplicate, transaction, extraction, phoneNumber } }];"
+      },
+      "id": "4fa467e1-cb00-483d-ab88-293b96af8d16",
+      "name": "Evaluate Duplicates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3320,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.isDuplicate }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "a6d2e38e-0557-464f-84a7-dc7348fe5ac7",
+      "name": "Is Duplicate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3540,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "ConversationState"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "phoneNumber": "={{ $json.phoneNumber }}",
+            "pendingAction": "confirm_duplicate",
+            "pendingTransactionJson": "={{ JSON.stringify($json.transaction) }}",
+            "lastInteraction": "={{ new Date().toISOString() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "c8b78097-48af-459d-bd46-1cba75193e01",
+      "name": "Save Duplicate State",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "from": "={{ $env.TWILIO_WHATSAPP_NUMBER }}",
+        "to": "={{ $('Process Extraction').first().json.phoneNumber }}",
+        "toWhatsapp": true,
+        "body": "=This looks like a duplicate receipt:\n- Merchant: {{ $('Process Extraction').first().json.transaction.merchant }}\n- Amount: {{ $('Process Extraction').first().json.transaction.totalAmount }}\n- Date: {{ $('Process Extraction').first().json.transaction.date }}\n\nReply *yes* to record it anyway, or *no* to skip."
+      },
+      "id": "85d60a64-3ae7-46ff-8d80-d6e5c07512b1",
+      "name": "Send Duplicate Prompt",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        3980,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Transactions"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID": "={{ $json.transaction.id }}",
+            "Timestamp": "={{ $json.transaction.timestamp }}",
+            "Phone Number": "={{ $json.transaction.phoneNumber }}",
+            "Merchant": "={{ $json.transaction.merchant }}",
+            "Receipt Date": "={{ $json.transaction.date }}",
+            "Category": "={{ $json.transaction.category }}",
+            "Currency": "={{ $json.transaction.currency }}",
+            "Subtotal": "={{ $json.transaction.subtotal }}",
+            "Tax": "={{ $json.transaction.taxAmount }}",
+            "Tip": "={{ $json.transaction.tipAmount }}",
+            "Total": "={{ $json.transaction.totalAmount }}",
+            "Payment Method": "={{ $json.transaction.paymentMethod }}",
+            "Line Items": "={{ $json.transaction.lineItemsSummary }}",
+            "Confidence": "={{ $json.transaction.confidenceScore }}",
+            "Notes": "",
+            "Month": "={{ $json.transaction.monthFormula }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "2e3b7dae-fb2b-4492-b58f-cfacd714f127",
+      "name": "Write Transaction",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3760,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format receipt confirmation message\nconst { transaction, extraction, phoneNumber } = $('Process Extraction').first().json;\n\nconst SYM = { USD:'$', EUR:'\\u20ac', GBP:'\\u00a3', CAD:'C$', AUD:'A$', JPY:'\\u00a5', INR:'\\u20b9', BRL:'R$', MXN:'MX$', ZAR:'R', KRW:'\\u20a9', CHF:'CHF' };\nfunction fmt(amt, code) {\n  const s = SYM[(code||'USD').toUpperCase()] || code || '$';\n  const d = ['JPY','KRW'].includes((code||'').toUpperCase()) ? 0 : 2;\n  return s + amt.toFixed(d);\n}\nfunction fmtDate(iso) {\n  const dt = new Date(iso + 'T00:00:00');\n  if (isNaN(dt.getTime())) return iso;\n  const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\n  return m[dt.getMonth()] + ' ' + dt.getDate() + ', ' + dt.getFullYear();\n}\n\nconst lines = ['*Receipt Recorded!*', ''];\nlines.push('Merchant: ' + extraction.merchant);\nlines.push('Date: ' + fmtDate(extraction.date));\nlines.push('Category: ' + transaction.category);\nlines.push('Total: ' + fmt(extraction.totalAmount, extraction.currency));\n\nif (extraction.subtotal != null) {\n  lines.push('');\n  if (extraction.lineItems && extraction.lineItems.length > 0) {\n    lines.push('Items:');\n    for (const item of extraction.lineItems) {\n      const qty = item.quantity > 1 ? ' x' + item.quantity : '';\n      lines.push('- ' + item.description + qty + ': ' + fmt(item.totalPrice, extraction.currency));\n    }\n    lines.push('');\n  }\n  lines.push('Subtotal: ' + fmt(extraction.subtotal, extraction.currency));\n  if (extraction.taxAmount != null) lines.push('Tax: ' + fmt(extraction.taxAmount, extraction.currency));\n  if (extraction.tipAmount != null) lines.push('Tip: ' + fmt(extraction.tipAmount, extraction.currency));\n}\n\nif (extraction.paymentMethod) {\n  const card = extraction.lastFourDigits ? ' ****' + extraction.lastFourDigits : '';\n  lines.push('Payment: ' + extraction.paymentMethod + card);\n}\n\nlines.push('');\nlines.push('Confidence: ' + Math.round(extraction.confidence.overall * 100) + '%');\nif (extraction.confidence.overall < 0.7) {\n  lines.push('');\n  lines.push('Note: Low confidence (' + Math.round(extraction.confidence.overall * 100) + '%). Please review the details above.');\n}\nlines.push('');\nlines.push('Reply *help* for commands.');\n\nreturn [{ json: { message: lines.join('\\n'), phoneNumber, transaction } }];"
+      },
+      "id": "9a49bdb9-c5c6-4c1d-bfda-57c8dee46adc",
+      "name": "Format Confirmation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3980,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "ConversationState"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "phoneNumber": "={{ $json.phoneNumber }}",
+            "pendingAction": "",
+            "pendingTransactionJson": "={{ JSON.stringify($json.transaction) }}",
+            "lastInteraction": "={{ new Date().toISOString() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "b8203e58-5626-4553-940f-9e4758ba02aa",
+      "name": "Save Last Transaction",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        4200,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "from": "={{ $env.TWILIO_WHATSAPP_NUMBER }}",
+        "to": "={{ $json.phoneNumber }}",
+        "toWhatsapp": true,
+        "body": "={{ $('Format Confirmation').first().json.message }}"
+      },
+      "id": "39b8ccce-757f-4146-aef8-ebfd742cbb43",
+      "name": "Send Receipt Confirmation",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        4420,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle yes/no confirmation responses\nconst incoming = $input.first().json;\nconst answer = (incoming.messageText || '').toLowerCase().trim();\nconst state = incoming.pendingState;\n\nconst isYes = ['yes','y','yeah','yep','sure','ok'].includes(answer);\n\nlet responseMessage = '';\nlet action = 'clear_state';\nlet pendingTransaction = {};\n\ntry {\n  pendingTransaction = JSON.parse(state.pendingTransactionJson || '{}');\n} catch (e) {\n  pendingTransaction = {};\n}\n\nif (state.pendingAction === 'confirm_duplicate') {\n  if (isYes && pendingTransaction.id) {\n    action = 'append_duplicate';\n    responseMessage = 'Receipt recorded despite duplicate.';\n  } else {\n    responseMessage = 'Receipt skipped. No duplicate was recorded.';\n  }\n} else if (state.pendingAction === 'confirm_delete') {\n  if (isYes && pendingTransaction.sheetRowNumber) {\n    action = 'delete_row';\n    responseMessage = 'Transaction deleted successfully.';\n  } else {\n    responseMessage = 'Delete cancelled.';\n  }\n} else {\n  responseMessage = \"I didn't understand that. Send *help* for commands.\";\n}\n\nreturn [{ json: { action, responseMessage, pendingTransaction, phoneNumber: incoming.phoneNumber } }];"
+      },
+      "id": "2799bb61-2bc3-4c39-8ebc-de7c520940d0",
+      "name": "Handle Confirmation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "append_duplicate",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "append_duplicate"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "delete_row",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "delete_row"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "c821f509-11e6-4ab7-81ea-78573c979f03",
+      "name": "Confirmation Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        1560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Transactions"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID": "={{ $json.pendingTransaction.id }}",
+            "Timestamp": "={{ $json.pendingTransaction.timestamp }}",
+            "Phone Number": "={{ $json.pendingTransaction.phoneNumber }}",
+            "Merchant": "={{ $json.pendingTransaction.merchant }}",
+            "Receipt Date": "={{ $json.pendingTransaction.date }}",
+            "Category": "={{ $json.pendingTransaction.category }}",
+            "Currency": "={{ $json.pendingTransaction.currency }}",
+            "Subtotal": "={{ $json.pendingTransaction.subtotal }}",
+            "Tax": "={{ $json.pendingTransaction.taxAmount }}",
+            "Tip": "={{ $json.pendingTransaction.tipAmount }}",
+            "Total": "={{ $json.pendingTransaction.totalAmount }}",
+            "Payment Method": "={{ $json.pendingTransaction.paymentMethod }}",
+            "Line Items": "={{ $json.pendingTransaction.lineItemsSummary }}",
+            "Confidence": "={{ $json.pendingTransaction.confidenceScore }}",
+            "Notes": "Recorded despite duplicate",
+            "Month": "=TEXT(INDIRECT(\"E\"&ROW()),\"YYYY-MM\")"
+          }
+        },
+        "options": {}
+      },
+      "id": "06f95e40-0885-4add-abf6-7b1d1448b1c1",
+      "name": "Append Duplicate Tx",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1780,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "from": "={{ $env.TWILIO_WHATSAPP_NUMBER }}",
+        "to": "={{ $json.phoneNumber }}",
+        "toWhatsapp": true,
+        "body": "={{ $('Handle Confirmation').first().json.responseMessage }}"
+      },
+      "id": "7135e52d-0636-44b7-af70-caff54d4d572",
+      "name": "Send Confirm Result",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse text command\nconst text = $input.first().json.messageText.trim().toLowerCase();\nconst phoneNumber = $input.first().json.phoneNumber;\nconst normalizedPhone = $input.first().json.normalizedPhone;\n\nlet commandType = 'unknown';\nlet args = {};\n\nif (text === 'help') commandType = 'help';\nelse if (text === 'categories') commandType = 'categories';\nelse if (text === 'budget') commandType = 'budget';\nelse if (text === 'total') commandType = 'total';\nelse if (text === 'delete last') commandType = 'delete_last';\nelse {\n  const summaryMatch = text.match(/^summary(?:\\s+(\\w+))?$/);\n  if (summaryMatch) {\n    commandType = 'summary';\n    const ma = summaryMatch[1];\n    if (ma) {\n      const MN = {jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,may:4,jun:5,june:5,jul:6,july:6,aug:7,august:7,sep:8,september:8,oct:9,october:9,nov:10,november:10,dec:11,december:11};\n      if (ma in MN) { args.month = String(MN[ma]+1).padStart(2,'0'); args.year = String(new Date().getFullYear()); }\n    }\n  }\n  const lastMatch = text.match(/^last\\s+(\\d+)$/);\n  if (lastMatch) { commandType = 'last_n'; args.count = Math.min(parseInt(lastMatch[1],10), 20); }\n}\n\nreturn [{ json: { commandType, args, phoneNumber, normalizedPhone } }];"
+      },
+      "id": "353cbe23-c289-4f8e-bc96-69660035c7d8",
+      "name": "Parse Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.commandType }}",
+                    "rightValue": "help",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "help"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.commandType }}",
+                    "rightValue": "categories",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "categories"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ ['summary','budget','total','last_n','delete_last'].includes($json.commandType) }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "data_command"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "8f1c0c06-297d-4145-b2ca-c23b11b75e0a",
+      "name": "Command Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        1560,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "from": "={{ $env.TWILIO_WHATSAPP_NUMBER }}",
+        "to": "={{ $json.phoneNumber }}",
+        "toWhatsapp": true,
+        "body": "*AI Bookkeeper - Commands*\n\nSend a photo of your receipt to record an expense.\n\nAvailable commands:\n- *help* - Show this message\n- *summary* - This month's spending breakdown\n- *summary jan* - Specific month's breakdown\n- *budget* - Budget status per category\n- *last 5* - Show last 5 transactions (any number)\n- *total* - Total spending this month\n- *delete last* - Remove the last entry\n- *categories* - List all expense categories\n\nJust send a receipt photo to get started!"
+      },
+      "id": "b37ecf11-965d-4f4a-8e4e-5a80b5e7fbe0",
+      "name": "Send Help",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "from": "={{ $env.TWILIO_WHATSAPP_NUMBER }}",
+        "to": "={{ $json.phoneNumber }}",
+        "toWhatsapp": true,
+        "body": "*Expense Categories:*\n\n1. Food & Dining\n2. Groceries\n3. Transportation\n4. Utilities\n5. Entertainment\n6. Healthcare\n7. Shopping\n8. Business\n9. Travel\n10. Education\n11. Personal Care\n12. Home & Garden\n13. Gifts & Donations\n14. Subscriptions\n15. Other"
+      },
+      "id": "e4bfcddd-dbc4-4f81-8ba9-4ed406843794",
+      "name": "Send Categories",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Transactions"
+        },
+        "options": {}
+      },
+      "id": "c5880835-9dbb-4aca-bc5f-b1a4ab46238d",
+      "name": "Read Transactions for Commands",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1780,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Execute data-dependent commands: summary, budget, total, last_n, delete_last\nconst command = $('Parse Command').first().json;\nconst { commandType, args, phoneNumber, normalizedPhone } = command;\nconst allRows = $input.all().map(item => item.json);\n\nconst SYM = { USD:'$', EUR:'\\u20ac', GBP:'\\u00a3', CAD:'C$', AUD:'A$', JPY:'\\u00a5', INR:'\\u20b9' };\nfunction fmt(a, c) { return (SYM[(c||'USD').toUpperCase()]||c||'$') + a.toFixed(2); }\nfunction fmtD(iso) {\n  const d = new Date(iso + 'T00:00:00');\n  if (isNaN(d.getTime())) return iso;\n  const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\n  return m[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();\n}\n\nlet txs = allRows.map((row, idx) => ({\n  merchant: row['Merchant'] || '',\n  date: row['Receipt Date'] || '',\n  category: row['Category'] || 'Other',\n  currency: row['Currency'] || 'USD',\n  totalAmount: parseFloat(row['Total'] || '0') || 0,\n  phoneNumber: (row['Phone Number'] || '').replace('whatsapp:', ''),\n  sheetRowNumber: idx + 2,\n})).filter(tx => tx.phoneNumber === normalizedPhone);\n\nconst BUDGETS = { 'Food & Dining':500, Groceries:600, Transportation:300, Utilities:300, Entertainment:200, Healthcare:200, Shopping:300, Business:500, Travel:500, Education:200, 'Personal Care':150, 'Home & Garden':200, 'Gifts & Donations':100, Subscriptions:100, Other:200 };\nconst now = new Date();\nconst curMonth = String(now.getMonth()+1).padStart(2,'0');\nconst curYear = String(now.getFullYear());\nconst curPrefix = curYear + '-' + curMonth;\nconst monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];\n\nlet responseMessage = '';\nlet saveDeleteState = false;\nlet pendingTransaction = null;\n\nif (commandType === 'summary') {\n  const month = args.month || curMonth;\n  const year = args.year || curYear;\n  const prefix = year + '-' + month;\n  const mtxs = txs.filter(tx => tx.date.startsWith(prefix));\n  const mName = monthNames[parseInt(month,10)-1] || month;\n  if (mtxs.length === 0) { responseMessage = 'No transactions found for ' + mName + ' ' + year + '.'; }\n  else {\n    const total = mtxs.reduce((s,tx) => s+tx.totalAmount, 0);\n    const avg = total / mtxs.length;\n    const largest = mtxs.reduce((mx,tx) => tx.totalAmount > mx.totalAmount ? tx : mx);\n    const catMap = {};\n    for (const tx of mtxs) catMap[tx.category] = (catMap[tx.category]||0) + tx.totalAmount;\n    const sorted = Object.entries(catMap).sort((a,b) => b[1]-a[1]);\n    const lines = ['*'+mName+' '+year+' Summary*','','Total Spent: '+fmt(total,'USD'),'Transactions: '+mtxs.length,'Average: '+fmt(avg,'USD'),'Largest: '+largest.merchant+' ('+fmt(largest.totalAmount,'USD')+')','','*By Category:*'];\n    for (const [cat,amt] of sorted) lines.push(cat+': '+fmt(amt,'USD')+' ('+Math.round(amt/total*100)+'%)');\n    responseMessage = lines.join('\\n');\n  }\n} else if (commandType === 'budget') {\n  const mtxs = txs.filter(tx => tx.date.startsWith(curPrefix));\n  const catTotals = {};\n  for (const tx of mtxs) catTotals[tx.category] = (catTotals[tx.category]||0) + tx.totalAmount;\n  const lines = ['*Budget Status*',''];\n  for (const [cat, budget] of Object.entries(BUDGETS)) {\n    const spent = catTotals[cat] || 0;\n    const pct = budget > 0 ? Math.round(spent/budget*100) : 0;\n    const filled = Math.min(Math.round(pct/10), 10);\n    const bar = '[' + (pct>100?'!':'#').repeat(filled) + '-'.repeat(10-filled) + ']';\n    lines.push(cat, bar+' '+pct+'%'+(pct>100?' OVER':''), fmt(spent,'USD')+' / '+fmt(budget,'USD'), '');\n  }\n  responseMessage = lines.join('\\n');\n} else if (commandType === 'total') {\n  const mtxs = txs.filter(tx => tx.date.startsWith(curPrefix));\n  const total = mtxs.reduce((s,tx) => s+tx.totalAmount, 0);\n  responseMessage = 'Total spent in '+monthNames[now.getMonth()]+' '+curYear+': '+fmt(total,'USD');\n} else if (commandType === 'last_n') {\n  const count = args.count || 5;\n  const recent = txs.reverse().slice(0, count);\n  if (recent.length === 0) responseMessage = 'No transactions found.';\n  else {\n    const lines = ['*Last '+recent.length+' Transactions:*',''];\n    for (const tx of recent) lines.push(fmtD(tx.date)+' | '+tx.merchant+' | '+fmt(tx.totalAmount,tx.currency)+' | '+tx.category);\n    responseMessage = lines.join('\\n');\n  }\n} else if (commandType === 'delete_last') {\n  const recent = txs.reverse();\n  if (recent.length === 0) responseMessage = 'No transactions found.';\n  else {\n    const last = recent[0];\n    responseMessage = 'Delete this transaction?\\n- '+last.merchant+': $'+last.totalAmount.toFixed(2)+'\\n\\nReply *yes* to confirm or *no* to cancel.';\n    saveDeleteState = true;\n    pendingTransaction = last;\n  }\n}\n\nreturn [{ json: { responseMessage, phoneNumber, saveDeleteState, pendingTransaction } }];"
+      },
+      "id": "6d11122c-6ee6-40ae-82a3-386a1e1706f4",
+      "name": "Execute Data Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.saveDeleteState }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "09c92673-9763-4b83-8e43-8882817ec246",
+      "name": "Need Delete State?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SPREADSHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "ConversationState"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "phoneNumber": "={{ $json.phoneNumber }}",
+            "pendingAction": "confirm_delete",
+            "pendingTransactionJson": "={{ JSON.stringify($json.pendingTransaction) }}",
+            "lastInteraction": "={{ new Date().toISOString() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "6eaf6cff-b56f-42b1-924e-bf27b8d2788d",
+      "name": "Save Delete State",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2440,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "from": "={{ $env.TWILIO_WHATSAPP_NUMBER }}",
+        "to": "={{ $json.phoneNumber }}",
+        "toWhatsapp": true,
+        "body": "={{ $('Execute Data Command').first().json.responseMessage }}"
+      },
+      "id": "19b39a2d-6c53-4dfa-a2b3-9c75f522e164",
+      "name": "Send Command Response",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        2660,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "from": "={{ $env.TWILIO_WHATSAPP_NUMBER }}",
+        "to": "={{ $('Parse Incoming Message').first().json.phoneNumber }}",
+        "toWhatsapp": true,
+        "body": "I didn't understand that. Send *help* to see available commands, or send a receipt photo to record an expense."
+      },
+      "id": "b14e3c6f-18ae-45e7-81ae-97b1c03cf1af",
+      "name": "Send Unknown Command",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        900
+      ]
+    }
+  ],
+  "connections": {
+    "Twilio Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond TwiML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond TwiML": {
+      "main": [
+        [
+          {
+            "node": "Parse Incoming Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Incoming Message": {
+      "main": [
+        [
+          {
+            "node": "Read Conversation State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Conversation State": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Route": {
+      "main": [
+        [
+          {
+            "node": "Route Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Type": {
+      "main": [
+        [
+          {
+            "node": "Send Processing Ack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Command",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Unknown Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Processing Ack": {
+      "main": [
+        [
+          {
+            "node": "Download Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image": {
+      "main": [
+        [
+          {
+            "node": "Convert to Base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to Base64": {
+      "main": [
+        [
+          {
+            "node": "Claude Validate Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Validate Image": {
+      "main": [
+        [
+          {
+            "node": "Parse Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Validation": {
+      "main": [
+        [
+          {
+            "node": "Is Valid Receipt?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Valid Receipt?": {
+      "main": [
+        [
+          {
+            "node": "Claude Extract Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Extract Receipt": {
+      "main": [
+        [
+          {
+            "node": "Process Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Extraction": {
+      "main": [
+        [
+          {
+            "node": "Read Transactions for Dupes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Transactions for Dupes": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Is Duplicate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Duplicate?": {
+      "main": [
+        [
+          {
+            "node": "Save Duplicate State",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Write Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Duplicate State": {
+      "main": [
+        [
+          {
+            "node": "Send Duplicate Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Transaction": {
+      "main": [
+        [
+          {
+            "node": "Format Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Save Last Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Last Transaction": {
+      "main": [
+        [
+          {
+            "node": "Send Receipt Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Confirmation Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmation Action": {
+      "main": [
+        [
+          {
+            "node": "Append Duplicate Tx",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Confirm Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Confirm Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Duplicate Tx": {
+      "main": [
+        [
+          {
+            "node": "Send Confirm Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Command": {
+      "main": [
+        [
+          {
+            "node": "Command Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Command Router": {
+      "main": [
+        [
+          {
+            "node": "Send Help",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Categories",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read Transactions for Commands",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Unknown Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Transactions for Commands": {
+      "main": [
+        [
+          {
+            "node": "Execute Data Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Data Command": {
+      "main": [
+        [
+          {
+            "node": "Need Delete State?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Need Delete State?": {
+      "main": [
+        [
+          {
+            "node": "Save Delete State",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Command Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Delete State": {
+      "main": [
+        [
+          {
+            "node": "Send Command Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
