@@ -1,6 +1,6 @@
 {
   "spreadsheet": {
-    "title": "AI Bookkeeper",
+    "title": "ChatBooks",
     "sheets": [
       {
         "name": "Transactions",
@@ -25,7 +25,7 @@
         "name": "Dashboard",
         "notes": "Auto-populated with overview formulas. See SETUP.md for formula details.",
         "formulas": {
-          "A1": "AI Bookkeeper Dashboard",
+          "A1": "ChatBooks Dashboard",
           "A3": "Current Month Overview",
           "A4": "Total Spent",
           "B4": "=SUMIFS(Transactions!K:K,Transactions!P:P,TEXT(TODAY(),\"YYYY-MM\"))",

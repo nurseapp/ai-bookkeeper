@@ -1,4 +1,4 @@
-# AI Bookkeeper - n8n Cloud Setup Guide
+# ChatBooks - n8n Cloud Setup Guide
 
 WhatsApp receipt scanner powered by Claude Vision + Google Sheets, running on n8n Cloud.
 
@@ -24,13 +24,13 @@ Plus 7 text commands: `help`, `summary`, `budget`, `last 5`, `total`, `delete la
 
 ## Step 1: Create Google Spreadsheet
 
-1. Create a new Google Spreadsheet and name it **"AI Bookkeeper"**
+1. Create a new Google Spreadsheet and name it **"ChatBooks"**
 2. Create 5 sheets (tabs) with these exact names:
    - **Transactions** - Add headers in row 1: `ID | Timestamp | Phone Number | Merchant | Receipt Date | Category | Currency | Subtotal | Tax | Tip | Total | Payment Method | Line Items | Confidence | Notes | Month`
    - **Monthly Summary** - Leave empty (formulas auto-populate)
    - **Categories** - Import `setup/categories-data.csv` (File > Import > Upload)
    - **Dashboard** - Add these formulas:
-     - A1: `AI Bookkeeper Dashboard`
+     - A1: `ChatBooks Dashboard`
      - A4: `Total Spent` / B4: `=SUMIFS(Transactions!K:K,Transactions!P:P,TEXT(TODAY(),"YYYY-MM"))`
      - A5: `Transaction Count` / B5: `=COUNTIFS(Transactions!P:P,TEXT(TODAY(),"YYYY-MM"))`
      - A6: `Daily Average` / B6: `=IFERROR(B4/DAY(TODAY()),0)`

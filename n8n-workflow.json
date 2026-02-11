@@ -1,5 +1,5 @@
 {
-  "name": "AI Bookkeeper - WhatsApp Receipt Scanner",
+  "name": "ChatBooks - WhatsApp Receipt Scanner",
   "nodes": [
     {
       "parameters": {
@@ -791,7 +791,7 @@
         "from": "={{ $env.TWILIO_WHATSAPP_NUMBER }}",
         "to": "={{ $json.phoneNumber }}",
         "toWhatsapp": true,
-        "body": "*AI Bookkeeper - Commands*\n\nSend a photo of your receipt to record an expense.\n\nAvailable commands:\n- *help* - Show this message\n- *summary* - This month's spending breakdown\n- *summary jan* - Specific month's breakdown\n- *budget* - Budget status per category\n- *last 5* - Show last 5 transactions (any number)\n- *total* - Total spending this month\n- *delete last* - Remove the last entry\n- *categories* - List all expense categories\n\nJust send a receipt photo to get started!"
+        "body": "*ChatBooks - Commands*\n\nSend a photo of your receipt to record an expense.\n\nAvailable commands:\n- *help* - Show this message\n- *summary* - This month's spending breakdown\n- *summary jan* - Specific month's breakdown\n- *budget* - Budget status per category\n- *last 5* - Show last 5 transactions (any number)\n- *total* - Total spending this month\n- *delete last* - Remove the last entry\n- *categories* - List all expense categories\n\nJust send a receipt photo to get started!"
       },
       "id": "b37ecf11-965d-4f4a-8e4e-5a80b5e7fbe0",
       "name": "Send Help",
