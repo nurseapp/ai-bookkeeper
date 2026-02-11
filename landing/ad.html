@@ -384,18 +384,9 @@
       transition: width 0.3s linear;
     }
 
-    /* Scale for screen */
-    @media (max-height: 1920px) {
-      .ad-container {
-        transform: scale(0.5);
-        transform-origin: top center;
-      }
-    }
-    @media (max-height: 960px) {
-      .ad-container {
-        transform: scale(0.35);
-        transform-origin: top center;
-      }
+    /* Auto-scale to fit any viewport */
+    .ad-container {
+      transform-origin: top center;
     }
   </style>
 </head>
@@ -569,6 +560,21 @@
         }
       }
     }
+
+    // Auto-scale container to fit viewport
+    function scaleToFit() {
+      const container = document.querySelector('.ad-container');
+      const scaleX = window.innerWidth / 1080;
+      const scaleY = window.innerHeight / 1920;
+      const scale = Math.min(scaleX, scaleY);
+      container.style.transform = 'scale(' + scale + ')';
+      // Center vertically
+      const scaledHeight = 1920 * scale;
+      const offsetY = Math.max(0, (window.innerHeight - scaledHeight) / 2);
+      container.style.marginTop = offsetY + 'px';
+    }
+    scaleToFit();
+    window.addEventListener('resize', scaleToFit);
 
     // Start
     updateProgress();
