@@ -419,17 +419,15 @@
     body {
       display: flex;
       justify-content: center;
-      align-items: flex-start;
-      min-height: 100vh;
-    }
-    .ad-wrapper {
-      display: flex;
-      justify-content: center;
       align-items: center;
       min-height: 100vh;
     }
+    .ad-wrapper {
+      position: relative;
+      overflow: hidden;
+    }
     .ad-container {
-      transform-origin: top center;
+      transform-origin: top left;
     }
   </style>
 </head>
@@ -614,16 +612,15 @@
 
     // Auto-scale container to fit viewport
     function scaleToFit() {
-      const container = document.querySelector('.ad-container');
-      const wrapper = document.querySelector('.ad-wrapper');
-      // Scale: fit height on desktop, fit width on mobile
-      const scaleX = (window.innerWidth * 0.95) / 1080;
-      const scaleY = window.innerHeight / 1920;
-      const scale = Math.min(scaleX, scaleY);
+      var container = document.querySelector('.ad-container');
+      var wrapper = document.querySelector('.ad-wrapper');
+      var scaleX = (window.innerWidth * 0.95) / 1080;
+      var scaleY = window.innerHeight / 1920;
+      var scale = Math.min(scaleX, scaleY);
       container.style.transform = 'scale(' + scale + ')';
-      // Set wrapper size to match scaled content so centering works
-      wrapper.style.width = '100vw';
-      wrapper.style.height = (1920 * scale) + 'px';
+      // Set wrapper to the VISUAL size so body flex-centering works
+      wrapper.style.width = Math.floor(1080 * scale) + 'px';
+      wrapper.style.height = Math.floor(1920 * scale) + 'px';
     }
     scaleToFit();
     window.addEventListener('resize', scaleToFit);
