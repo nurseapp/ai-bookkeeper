@@ -385,12 +385,25 @@
     }
 
     /* Auto-scale to fit any viewport */
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+    .ad-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
     .ad-container {
-      transform-origin: top left;
+      transform-origin: top center;
     }
   </style>
 </head>
 <body>
+  <div class="ad-wrapper">
   <div class="ad-container">
     <div class="bg-glow"></div>
     <div class="bg-glow"></div>
@@ -503,6 +516,7 @@
 
     <div class="watermark">CHATBOOKS</div>
   </div>
+  </div>
 
   <script>
     const scenes = ['scene1', 'scene2', 'scene3', 'scene4', 'scene5'];
@@ -564,20 +578,15 @@
     // Auto-scale container to fit viewport
     function scaleToFit() {
       const container = document.querySelector('.ad-container');
-      // Scale to fill width but also fit within viewport height
-      const fillRatio = window.innerWidth < 768 ? 0.95 : 0.75;
-      const scaleX = (window.innerWidth * fillRatio) / 1080;
+      const wrapper = document.querySelector('.ad-wrapper');
+      // Scale: fit height on desktop, fit width on mobile
+      const scaleX = (window.innerWidth * 0.95) / 1080;
       const scaleY = window.innerHeight / 1920;
-      // Use the smaller scale so nothing gets cut off
       const scale = Math.min(scaleX, scaleY);
       container.style.transform = 'scale(' + scale + ')';
-      // Center horizontally and vertically
-      const scaledWidth = 1080 * scale;
-      const scaledHeight = 1920 * scale;
-      const offsetX = (window.innerWidth - scaledWidth) / 2;
-      const offsetY = Math.max(0, (window.innerHeight - scaledHeight) / 2);
-      container.style.marginLeft = offsetX + 'px';
-      container.style.marginTop = offsetY + 'px';
+      // Set wrapper size to match scaled content so centering works
+      wrapper.style.width = '100vw';
+      wrapper.style.height = (1920 * scale) + 'px';
     }
     scaleToFit();
     window.addEventListener('resize', scaleToFit);
