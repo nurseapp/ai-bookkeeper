@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Left: green "Chat" side with chat icon -->
+  <rect x="2" y="8" width="30" height="48" rx="8" ry="8" fill="#25D366"/>
+  <!-- Right: dark "Books" side -->
+  <rect x="32" y="8" width="30" height="48" rx="8" ry="8" fill="#1a1a1a" stroke="#25D366" stroke-width="3"/>
+  <!-- Chat bubble icon on left -->
+  <path d="M10 24a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3v-3h-2a2 2 0 01-2-2z" fill="#000" opacity="0.6"/>
+  <!-- "B" letter on right -->
+  <text x="47" y="40" font-family="Inter,sans-serif" font-weight="900" font-size="24" fill="#f5f5f5" text-anchor="middle">B</text>
+</svg>

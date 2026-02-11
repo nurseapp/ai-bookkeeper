@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ChatBooks - Receipt Scanning via WhatsApp</title>
   <meta name="description" content="Snap a photo of your receipt on WhatsApp. AI extracts, categorizes, and tracks your expenses automatically. No app needed.">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -46,21 +47,33 @@
       align-items: center;
     }
     .logo {
-      font-size: 1.25rem;
-      font-weight: 700;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 0;
     }
-    .logo-icon {
-      width: 32px;
-      height: 32px;
+    .logo-left {
       background: var(--green);
-      border-radius: 8px;
+      padding: 6px 8px;
+      border-radius: 8px 0 0 8px;
+      font-size: 1rem;
+      font-weight: 900;
+      color: #000;
+      letter-spacing: -0.03em;
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 18px;
+      gap: 5px;
+    }
+    .logo-left svg { width: 18px; height: 18px; }
+    .logo-right {
+      background: var(--gray-800);
+      border: 2px solid var(--green);
+      border-left: none;
+      padding: 4px 10px;
+      border-radius: 0 8px 8px 0;
+      font-size: 1rem;
+      font-weight: 900;
+      color: var(--white);
+      letter-spacing: -0.03em;
     }
     .nav-cta {
       background: var(--green);
@@ -429,8 +442,11 @@
   <nav>
     <div class="container">
       <div class="logo">
-        <div class="logo-icon">&#128203;</div>
-        ChatBooks
+        <div class="logo-left">
+          <svg viewBox="0 0 24 24" fill="#000"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          Chat
+        </div>
+        <div class="logo-right">Books</div>
       </div>
       <a href="#pricing" class="nav-cta">Get Started</a>
     </div>
