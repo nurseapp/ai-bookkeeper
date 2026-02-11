@@ -564,7 +564,7 @@
     // Auto-scale container to fit viewport
     function scaleToFit() {
       const container = document.querySelector('.ad-container');
-      const scaleX = (window.innerWidth * 0.5) / 1080;
+      const scaleX = (window.innerWidth * 0.75) / 1080;
       const scaleY = window.innerHeight / 1920;
       const scale = Math.max(scaleX, scaleY);
       container.style.transform = 'scale(' + scale + ')';
