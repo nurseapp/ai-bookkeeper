@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to ChatBooks!</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #25D366;
+      --dark: #0a0a0a;
+      --gray-800: #1a1a1a;
+      --gray-700: #2a2a2a;
+      --gray-400: #999;
+      --white: #f5f5f5;
+    }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--dark);
+      color: var(--white);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .card {
+      background: var(--gray-800);
+      border: 1px solid var(--gray-700);
+      border-radius: 24px;
+      padding: 48px 36px;
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+    }
+    .checkmark {
+      width: 80px;
+      height: 80px;
+      background: var(--green);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      font-size: 40px;
+      color: #000;
+      font-weight: 800;
+    }
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: var(--gray-400);
+      font-size: 1rem;
+      margin-bottom: 36px;
+    }
+    .steps {
+      text-align: left;
+      margin-bottom: 36px;
+    }
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--gray-700);
+    }
+    .step:last-child { border-bottom: none; }
+    .step-num {
+      width: 36px;
+      height: 36px;
+      min-width: 36px;
+      background: var(--green);
+      color: #000;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .step-text h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .step-text p {
+      color: var(--gray-400);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .phone-number {
+      display: inline-block;
+      background: var(--gray-700);
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 0.95rem;
+      color: var(--green);
+      font-weight: 600;
+    }
+    .wa-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--green);
+      color: #000;
+      padding: 16px 32px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 1.05rem;
+      text-decoration: none;
+      transition: transform 0.2s, opacity 0.2s;
+      margin-bottom: 16px;
+    }
+    .wa-btn:hover { transform: translateY(-2px); opacity: 0.9; }
+    .wa-btn svg { width: 24px; height: 24px; }
+    .note {
+      color: var(--gray-400);
+      font-size: 0.8rem;
+      margin-top: 8px;
+    }
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 32px;
+    }
+    .logo-left {
+      background: var(--green);
+      padding: 8px 10px;
+      border-radius: 10px 0 0 10px;
+      font-size: 1.1rem;
+      font-weight: 900;
+      color: #000;
+      letter-spacing: -0.03em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .logo-left svg { width: 20px; height: 20px; }
+    .logo-right {
+      background: var(--gray-800);
+      border: 2px solid var(--green);
+      border-left: none;
+      padding: 6px 12px;
+      border-radius: 0 10px 10px 0;
+      font-size: 1.1rem;
+      font-weight: 900;
+      color: var(--white);
+      letter-spacing: -0.03em;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo">
+    <div class="logo-left">
+      <svg viewBox="0 0 24 24" fill="#000"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Chat
+    </div>
+    <div class="logo-right">Books</div>
+  </div>
+
+  <div class="card">
+    <div class="checkmark">&#10003;</div>
+    <h1>Payment Successful!</h1>
+    <p class="subtitle">Your ChatBooks account is being set up. Here's how to start tracking expenses:</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          <h3>Save Our WhatsApp Number</h3>
+          <p>Add this number to your contacts:<br><span class="phone-number">+1 (415) 523-8886</span></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          <h3>Open WhatsApp</h3>
+          <p>Send any message to the number above (e.g. "hi") to connect your account.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          <h3>Send Your First Receipt</h3>
+          <p>Snap a photo of any receipt and send it. AI will extract and categorize everything automatically.</p>
+        </div>
+      </div>
+    </div>
+
+    <a href="https://wa.me/14155238886?text=hi" class="wa-btn" target="_blank">
+      <svg viewBox="0 0 24 24" fill="#000"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a8 8 0 01-4.29-1.243l-.307-.182-2.87.852.852-2.87-.182-.307A8 8 0 1112 20z"/></svg>
+      Open WhatsApp
+    </a>
+    <p class="note">You'll receive a welcome message once connected.</p>
+  </div>
+</body>
+</html>
